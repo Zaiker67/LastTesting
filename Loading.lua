@@ -1,9 +1,3 @@
---[[
-    Silence - Ml Farming
-    by Henrik @xyzhenrik
-       Muki @mukimagdich
-]]
-
 local services = {
     players = game:GetService("Players"),
     replicatedstorage = game:GetService("ReplicatedStorage"),
@@ -75,7 +69,7 @@ local function greeting(hour)
 end
 
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/silencedevs/SilenceScripts/refs/heads/main/libraries/eleriumv2.luau?cache=" .. tostring(os.time()), true))()
-local silence = library:AddWindow("Silence | Fast Farming - " .. greeting(), {
+local silence = library:AddWindow("M14EBR | Paid Version - Fast Farming - " .. greeting(), {
     main_color = Color3.fromRGB(138, 0, 0),
     min_size = Vector2.new(500, 560),
     can_resize = false
@@ -89,11 +83,12 @@ task.spawn(function()
 end)
 
 local tabs = {
-    rebirths = silence:AddTab("Rebirths"),
+    rebirths = silence:AddTab("Fast Rebirth"),
     strength = silence:AddTab("Strength"),
-    strength2 = silence:AddTab("Strength (Slower)"),
+    strength2 = silence:AddTab("Fast Farm"),
     boss = silence:AddTab("Boss"),
-    other = silence:AddTab("Other"),
+    other = silence:AddTab("Misc"),
+	other2 = silence:AddTab("MiscV2")
     info = silence:AddTab("Info")
 }
 
