@@ -59,15 +59,6 @@ services.touchParts = function(part, hand, state)
     return pcall(firetouchinterest, part, hand, state)
 end
 
-local function greeting(hour)
-    hour = hour or os.date("*t").hour
-    if hour >= 6 and hour < 12 then return "Good Morning!"
-    elseif hour >= 12 and hour < 13 then return "Good Noon!"
-    elseif hour >= 13 and hour < 19 then return "Good Afternoon!"
-    elseif hour >= 19 and hour < 22 then return "Good Evening!"
-    else return "Good Night!" end
-end
-
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/silencedevs/SilenceScripts/refs/heads/main/libraries/eleriumv2.luau?cache=" .. tostring(os.time()), true))()
 local silence = library:AddWindow("M14EBR | Paid Version - Fast Farming - " .. greeting(), {
     main_color = Color3.fromRGB(138, 0, 0),
@@ -88,6 +79,7 @@ local tabs = {
     strength2 = silence:AddTab("Fast Farm"),
     boss = silence:AddTab("Boss"),
     other = silence:AddTab("Misc"),
+	other2 = silence:AddTab("MiscV2"),
     info = silence:AddTab("Info")
 }
 
@@ -2001,6 +1993,9 @@ tabs.other.eggsowned.TextSize = 14
 tabs.other.autoEgg = false
 tabs.other.autoShake = false
 tabs.other.autoSpinWheel = false
+tabs.other:antiAFK = true
+tabs.other:lockPosition = false
+tabs.other:antiKnockback = true
 tabs.other.eggUsedThisCycle = false
 
 
@@ -2118,6 +2113,139 @@ tabs.other:AddSwitch("Spin Fortune Wheel", function(bool)
     end
 end)
 
+local Players = game:GetService("Players")
+local VirtualUser = game:GetService("VirtualUser")
+local localPlayer = Players.LocalPlayer
+
+local afkGui = nil
+local afkConnection = nil
+
+-- Ilagay ang AddSwitch sa itaas
+tabs.other:AddSwitch("Anti-AFK", function(state)
+    if state then
+        -- Clean up any existing instances just in case
+        if afkGui then afkGui:Destroy() end
+        if afkConnection then afkConnection:Disconnect() end
+
+        afkGui = Instance.new("ScreenGui")
+        afkGui.Name = "AntiAFKGui"
+        afkGui.ResetOnSpawn = false
+        afkGui.Parent = localPlayer:WaitForChild("PlayerGui")
+
+        local titleLabel = Instance.new("TextLabel", afkGui)
+        titleLabel.Size = UDim2.new(0, 200, 0, 50)
+        titleLabel.Position = UDim2.new(0.5, -100, 0, -50)
+        titleLabel.Text = "ANTI AFK"
+        titleLabel.TextColor3 = Color3.fromRGB(50, 255, 50)
+        titleLabel.Font = Enum.Font.GothamBold
+        titleLabel.TextSize = 20
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.TextTransparency = 1
+
+        local timerLabel = Instance.new("TextLabel", afkGui)
+        timerLabel.Size = UDim2.new(0, 200, 0, 30)
+        timerLabel.Position = UDim2.new(0.5, -100, 0, -20)
+        timerLabel.Text = "00:00:00"
+        timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        timerLabel.Font = Enum.Font.GothamBold
+        timerLabel.TextSize = 18
+        timerLabel.BackgroundTransparency = 1
+        timerLabel.TextTransparency = 1
+
+        local startTime = tick()
+
+        -- Timer update task
+        task.spawn(function()
+            while afkGui and afkGui.Parent do
+                local elapsed = tick() - startTime
+                local hours = math.floor(elapsed / 3600)
+                local minutes = math.floor((elapsed % 3600) / 60)
+                local seconds = math.floor(elapsed % 60)
+                timerLabel.Text = string.format("%02d:%02d:%02d", hours, minutes, seconds)
+                task.wait(1)
+            end
+        end)
+
+        -- Fade animation task with safety checks after yields
+        task.spawn(function()
+            while afkGui and afkGui.Parent do
+                for n = 0, 1, 0.02 do
+                    if not afkGui or not afkGui.Parent then break end
+                    titleLabel.TextTransparency = 1 - n
+                    timerLabel.TextTransparency = 1 - n
+                    task.wait(0.015)
+                end
+
+                task.wait(1.5)
+
+                for i = 0, 1, 0.02 do
+                    if not afkGui or not afkGui.Parent then break end
+                    titleLabel.TextTransparency = i
+                    timerLabel.TextTransparency = i
+                    task.wait(0.015)
+                end
+
+                task.wait(1)
+            end
+        end)
+
+        -- Anti-AFK event connection
+        afkConnection = localPlayer.Idled:Connect(function()
+            VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+            task.wait(1)
+            VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        end)
+    else
+        -- Kapag pinatay o in-off ang switch
+        if afkGui then 
+            afkGui:Destroy() 
+            afkGui = nil 
+        end
+        if afkConnection then 
+            afkConnection:Disconnect() 
+            afkConnection = nil 
+        end
+    end
+end):Set(true)
+
+tabs.other:AddSwitch("Lock Position", function(Value)
+    if Value then
+        local character = game.Players.LocalPlayer.Character
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            local currentPos = character.HumanoidRootPart.CFrame
+            getgenv().posLock = game:GetService("RunService").Heartbeat:Connect(function()
+                if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = currentPos
+                end
+            end)
+        end
+    else
+        if getgenv().posLock then
+            getgenv().posLock:Disconnect()
+            getgenv().posLock = nil
+        end
+    end
+end)
+
+tabs.other:AddSwitch("Anti Knockback", function(Value)
+    if Value then
+        local playerName = game.Players.LocalPlayer.Name
+        local rootPart = game.Workspace:FindFirstChild(playerName):FindFirstChild("HumanoidRootPart")
+        local bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(100000, 0, 100000)
+        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        bodyVelocity.P = 1250
+        bodyVelocity.Parent = rootPart
+    else
+        local playerName = game.Players.LocalPlayer.Name
+        local rootPart = game.Workspace:FindFirstChild(playerName):FindFirstChild("HumanoidRootPart")
+        local existingVelocity = rootPart:FindFirstChild("BodyVelocity")
+        if existingVelocity and existingVelocity.MaxForce == Vector3.new(100000, 0, 100000) then
+            existingVelocity:Destroy()
+        end
+    end
+end):Set(true)
+
 
 tabs.other.boostItemList = {
     "Tropical Shake",
@@ -2170,7 +2298,7 @@ task.spawn(function()
     end
 end)
 
-tabs.other:AddSwitch("Eat All Boosts (Expect Lag)", function(state)
+tabs.other:AddSwitch("Eat All Boosts (Except Egg)", function(state)
     tabs.other.eatAllBoostsRunning = state
 end):Set(false)
 
@@ -2277,28 +2405,139 @@ tabs.other.tpE = function(position)
     services.virtualinputmanager:SendKeyEvent(false, Enum.KeyCode.E, false, game)
 end
 
-tabs.other:AddButton("Industrial Lift",function()
-    tabs.other.tpE(Vector3.new(-5491.68945, 81.2379913, 4643.85791))
+tabs.other:AddButton("Overcharged Lift",function()
+    tabs.other.tpE(Vector3.new(-3023.363, 151.797, 4696.859))
 end)
 
-tabs.other:AddButton("Industrial Squat",function()
-    tabs.other.tpE(Vector3.new(-5217.25049, 89.8445511, 5416.01025))
+tabs.other:AddButton("Overcharged Squat",function()
+    tabs.other.tpE(Vector3.new(-2673.216, 151.797, 5494.047))
 end)
 
-tabs.other:AddButton("Halloween Lift",function()
-    tabs.other.tpE(Vector3.new(5760.389, 83.206, 6117.898))
+tabs.other:AddButton("Hallowed Lift",function()
+    tabs.other.tpE(Vector3.new(5432.12, 85.35, 5715.02))
 end)
 
-tabs.other:AddButton("Halloween Squat",function()
-    tabs.other.tpE(Vector3.new(4803.357, 83.791, 5827.032))
+tabs.other:AddButton("Hallowed Squat",function()
+    tabs.other.tpE(Vector3.new(4812.03, 85.35, 5839.05))
+end)
+
+tabs.other:AddButton("Hallowed Bench",function()
+    tabs.other.tpE(Vector3.new(5314.69, 142.13, 6807.71))
+end)
+
+tabs.other:AddButton("Hallowed Pullups",function()
+    tabs.other.tpE(Vector3.new(4808.10, 102.34, 6857.22))
+end)
+
+-- Other2 Tab
+
+function unequipPets()
+    for _, folder in pairs(lp.player.petsFolder:GetChildren()) do
+        if folder:IsA("Folder") then
+            for _, pet in pairs(folder:GetChildren()) do
+                services.replicatedstorage.rEvents.equipPetEvent:FireServer("unequipPet", pet)
+            end
+        end
+    end
+    task.wait(0.1)
+end
+
+function equipPetsByName(name)
+    unequipPets()
+    task.wait(0.1) -- Slightly increased to ensure server registers the unequip request
+    
+    -- Iterate through ALL rarity folders (Basic, Advanced, Rare, Unique, Epic, etc.)
+    for _, folder in pairs(lp.player.petsFolder:GetChildren()) do
+        if folder:IsA("Folder") then
+            for _, pet in pairs(folder:GetChildren()) do
+                if pet.Name == name then
+                    services.replicatedstorage.rEvents.equipPetEvent:FireServer("equipPet", pet)
+                end
+            end
+        end
+    end
+end
+
+tabs.other2:AddLabel("Equip Rep Pets")
+
+tabs.other2:AddButton("Common Boss Pet", function()
+    unequipPets()
+    equipPetsByName("Common Boss Pet")
+end)
+
+tabs.other2:AddButton("Rare Boss Pet", function()
+    unequipPets()
+    equipPetsByName("Rare Boss Pet")
+end)
+
+tabs.other2:AddButton("Epic Boss Pet", function()
+    unequipPets()
+    equipPetsByName("Epic Boss Pet")
+end)
+
+tabs.other2:AddButton("Legendary Boss Pet", function()
+    unequipPets()
+    equipPetsByName("Legendary Boss Pet")
+end)
+
+tabs.other2:AddButton("Mythic Boss Pet", function()
+    unequipPets()
+    equipPetsByName("Mythic Boss Pet")
+end)
+
+tabs.other2:AddButton("Rainbow Boss Pet", function()
+    unequipPets()
+    equipPetsByName("Rainbow Boss Pet")
+end)
+
+tabs.other2:AddLabel("~~~~~~~~~~")
+
+tabs.other2:AddLabel("Equip Pack Pets")
+
+tabs.other2:AddButton("Swift Samurai", function()
+    unequipPets()
+    equipPetsByName("Swift Samurai")
+end)
+
+tabs.other2:AddButton("Tribal Overlord", function()
+    unequipPets()
+    equipPetsByName("Tribal Overlord")
+end)
+
+tabs.other2:AddButton("Omega Overlord", function()
+    unequipPets()
+    equipPetsByName("Omega Overlord")
+end)
+
+tabs.other2:AddButton("Titanium Hydra", function()
+    unequipPets()
+    equipPetsByName("Titanium Hydra")
+end)
+
+tabs.other2:AddLabel("~~~~~~~~~~")
+
+tabs.other2:AddLabel("Equip Health & Damage Packs")
+
+tabs.other2:AddButton("Mighty Monster", function()
+    unequipPets()
+    equipPetsByName("Mighty Monster")
+end)
+
+tabs.other2:AddButton("Wild Wizard", function()
+    unequipPets()
+    equipPetsByName("Wild Wizard")
 end)
 
 
-tabs.other:AddButton("Anti Lag (for bad devices)", function()
-    tabs.other.playerGui = lp.player:WaitForChild("PlayerGui")
+tabs.other2:AddLabel("~~~~~~~~~~")
+
+tabs.other2:AddLabel("Performance")
+
+tabs.other2:AddButton("Full Optimization", function()
+    tabs.other2.playerGui = lp.player:WaitForChild("PlayerGui")
 
     for _, gui in pairs(tabs.other.playerGui:GetChildren()) do
-        if gui:IsA("ScreenGui") and gui.Name ~= "imgui" then
+        if gui:IsA("ScreenGui") then
             gui:Destroy()
         end
     end
@@ -2310,15 +2549,15 @@ tabs.other:AddButton("Anti Lag (for bad devices)", function()
             end
         end
 
-        tabs.other.darkSky = Instance.new("Sky")
-        tabs.other.darkSky.Name = "DarkSky"
-        tabs.other.darkSky.SkyboxBk = "rbxassetid://0"
-        tabs.other.darkSky.SkyboxDn = "rbxassetid://0"
-        tabs.other.darkSky.SkyboxFt = "rbxassetid://0"
-        tabs.other.darkSky.SkyboxLf = "rbxassetid://0"
-        tabs.other.darkSky.SkyboxRt = "rbxassetid://0"
-        tabs.other.darkSky.SkyboxUp = "rbxassetid://0"
-        tabs.other.darkSky.Parent = services.lighting
+        tabs.other2.darkSky = Instance.new("Sky")
+        tabs.other2.darkSky.Name = "DarkSky"
+        tabs.other2.darkSky.SkyboxBk = "rbxassetid://0"
+        tabs.other2.darkSky.SkyboxDn = "rbxassetid://0"
+        tabs.other2.darkSky.SkyboxFt = "rbxassetid://0"
+        tabs.other2.darkSky.SkyboxLf = "rbxassetid://0"
+        tabs.other2.darkSky.SkyboxRt = "rbxassetid://0"
+        tabs.other2.darkSky.SkyboxUp = "rbxassetid://0"
+        tabs.other2.darkSky.Parent = services.lighting
 
         services.lighting.Brightness = 0
         services.lighting.ClockTime = 0
@@ -2344,7 +2583,7 @@ tabs.other:AddButton("Anti Lag (for bad devices)", function()
         end)
     end
 
-    tabs.other.removeParticleEffects = function()
+    tabs.other2.removeParticleEffects = function()
         for _, obj in pairs(workspace:GetDescendants()) do
             if obj:IsA("ParticleEmitter") then
                 obj:Destroy()
@@ -2352,7 +2591,7 @@ tabs.other:AddButton("Anti Lag (for bad devices)", function()
         end
     end
 
-    tabs.other.removeLightSources = function()
+    tabs.other2.removeLightSources = function()
         for _, obj in pairs(workspace:GetDescendants()) do
             if obj:IsA("PointLight") or obj:IsA("SpotLight") or obj:IsA("SurfaceLight") then
                 obj:Destroy()
@@ -2383,35 +2622,94 @@ end
         end
     end
 
-    tabs.other.removeParticleEffects()
-    tabs.other.removeLightSources()
-    tabs.other.darkenSky()
+    tabs.other2.removeParticleEffects()
+    tabs.other2.removeLightSources()
+    tabs.other2.darkenSky()
     services.replicatedstorage.shared.assets.ui.strengthFrame:Destroy()
     services.replicatedstorage.shared.assets.ui.durabilityFrame:Destroy()
 end)
 
-tabs.other:AddButton("Equip Rep Pets", function()
-    equipBestFarmingPets()
+tabs.info:Show()
+-- [[ DESIGN SETTINGS ]]
+local function createSeparator()
+    tabs.info:AddLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━")
+end
+
+-- [[ HEADER SECTION ]]
+tabs.info:AddLabel("M14EBR | PAID").TextSize = 25
+createSeparator()
+
+-- [[ DEV CREDITS WITH RAINBOW EFFECT ]]
+local devLabel = tabs.info:AddLabel("Developer: PrimeKenzouu")
+devLabel.TextSize = 22
+
+-- Rainbow Script for Owner Label
+task.spawn(function()
+    while task.wait() do
+        local hue = tick() % 5 / 5 -- Bilis ng rainbow (5 seconds cycle)
+        devLabel.TextColor3 = Color3.fromHSV(hue, 0.8, 1)
+    end
 end)
 
-tabs.info:Show()
-tabs.info:AddLabel("Made by xyzhenrik")
-tabs.info:AddLabel("Any issues? Create a Ticket on Discord")
-tabs.info:AddLabel("Official Discord: discord.gg/9eFf93Kg8D")
-tabs.info:AddButton("Copy Invite", function()
-	if type(setclipboard) == "function" and pcall(setclipboard, "https://discord.gg/9eFf93Kg8D") then
-		pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "Link Copied!", Text = "You can continue to Discord now.", Duration = 3}) end)
-	else
-		pcall(function() game.StarterGui:SetCore("SendNotification", {Title = "Error!", Text = "Clipboard not Supported.", Duration = 3}) end)
-	end
+tabs.info:AddLabel("✨ Specialized Fast Farming Script ✨").TextSize = 14
+createSeparator()
+
+-- [[ TIKTOK SECTION ]]
+tabs.info:AddLabel("🔗 OFFICIAL TIKTOK ACCOUNT")
+local tiktokBtn = tabs.info:AddButton("📋 COPY TIKTOK LINK", function()
+    local link = "https://www.tiktok.com/@officialkenzouu"
+    
+    if setclipboard then
+        setclipboard(link)
+        -- Fancy Notification
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Link Copied!";
+            Text = "Pa Follow na rin ako sa Tiktok.";
+            Icon = "rbxassetid://6034320095"; -- Success Icon
+            Duration = 5;
+        })
+    else
+        game:GetService("TestService"):Message("Clipboard not supported.")
+    end
 end)
-tabs.info:AddLabel("")
-tabs.info:AddLabel("Contributors:").TextSize = 17
-tabs.info:AddLabel("- Henrik @xyzhenrik")
-tabs.info:AddLabel("- Muki @mukimagdich")
-tabs.info:AddLabel("")
-tabs.info:AddLabel("Silence is Open-Source!")
-tabs.info:AddLabel("")
-tabs.info.VersionLabel = tabs.info:AddLabel("Muscle Legends [V4.2.0]")
-tabs.info.VersionLabel.TextSize = 20
-tabs.info.VersionLabel.Font = Enum.Font.Arcade
+
+-- [[ STATUS SECTION ]]
+tabs.info:AddLabel("💠 Script Status: [ ONLINE ]")
+tabs.info:AddLabel("🚀 PAID VERSION: 1.0")
+createSeparator()
+
+-- [[ FOOTER SECTION - THE "ON DOWN" ANIMATION ]]
+local wLabel = tabs.info:AddLabel("🔥 M14EBR ON TOP 🔥")
+wLabel.TextSize = 35
+wLabel.Font = Enum.Font.LuckiestGuy
+
+-- Pulse & Rainbow Animation for the Footer
+task.spawn(function()
+    local baseSize = 35
+    while task.wait(0.05) do
+        -- Rainbow effect
+        local hue = tick() % 3 / 3
+        wLabel.TextColor3 = Color3.fromHSV(hue, 1, 1)
+        
+        -- Pulsing effect (Lalaki at liliit ng konti)
+        local pulse = math.sin(tick() * 5) * 3
+        wLabel.TextSize = baseSize + pulse
+    end
+end)
+
+-- [[ ADDITIONAL DECORATIONS ]]
+tabs.info:AddLabel("▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬")
+tabs.info:AddLabel("💎 THANK YOU FOR USING MY SCRIPT 💎").TextSize = 12
+
+-- Typewriter Effect sa status
+local statusLabel = tabs.info:AddLabel("Loading System...")
+task.spawn(function()
+    local text = "System Online. Enjoy Farming!"
+    while true do
+        for i = 1, #text do
+            statusLabel.Text = "> " .. string.sub(text, 1, i) .. "_"
+            task.wait(0.1)
+        end
+        task.wait(2)
+    end
+end)
