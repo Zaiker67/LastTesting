@@ -88,7 +88,6 @@ local tabs = {
     strength2 = silence:AddTab("Fast Farm"),
     boss = silence:AddTab("Boss"),
     other = silence:AddTab("Misc"),
-	other2 = silence:AddTab("MiscV2")
     info = silence:AddTab("Info")
 }
 
