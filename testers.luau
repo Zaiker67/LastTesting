@@ -60,18 +60,11 @@ services.touchParts = function(part, hand, state)
 end
 
 local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/silencedevs/SilenceScripts/refs/heads/main/libraries/eleriumv2.luau?cache=" .. tostring(os.time()), true))()
-local silence = library:AddWindow("M14EBR | Paid Version - Fast Farming - " .. greeting(), {
+local silence = library:AddWindow("M14EBR | Paid Version - Fast Farming ", {
     main_color = Color3.fromRGB(138, 0, 0),
     min_size = Vector2.new(500, 560),
     can_resize = false
 })
-
-task.spawn(function()
-    while true do
-        task.wait(60)
-        silence:SetTitle("Silence | Fast Farming - " .. greeting())
-    end
-end)
 
 local tabs = {
     rebirths = silence:AddTab("Fast Rebirth"),
